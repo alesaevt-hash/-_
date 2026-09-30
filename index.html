@@ -1,0 +1,1627 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Restaurant System — Касса</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:#f2f3f5;
+ color:#171717;
+}
+
+header{
+ background:#111;
+ color:#fff;
+ padding:15px;
+}
+
+.header{
+ max-width:1250px;
+ margin:auto;
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+}
+
+nav{
+ max-width:1250px;
+ margin:auto;
+ padding:10px 0;
+ display:flex;
+ gap:7px;
+ overflow:auto;
+}
+
+nav button{
+ white-space:nowrap;
+}
+
+main{
+ max-width:1250px;
+ margin:auto;
+ padding:15px;
+}
+
+button{
+ border:0;
+ border-radius:9px;
+ padding:10px 14px;
+ background:#111;
+ color:white;
+ cursor:pointer;
+ margin:3px;
+}
+
+button.light{
+ background:#e8e8e8;
+ color:#111;
+}
+
+.page{
+ display:none;
+}
+
+.page.active{
+ display:block;
+}
+
+.box{
+ background:white;
+ padding:18px;
+ border-radius:15px;
+ margin-bottom:15px;
+ box-shadow:0 2px 10px #0001;
+}
+
+.scanner{
+ display:flex;
+ gap:8px;
+ margin-bottom:15px;
+}
+
+.scanner input{
+ flex:1;
+ padding:13px;
+ font-size:18px;
+ border:1px solid #ccc;
+ border-radius:9px;
+}
+
+.cart-row{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ padding:13px 0;
+ border-bottom:1px solid #ddd;
+}
+
+.qty{
+ display:flex;
+ align-items:center;
+ gap:5px;
+}
+
+.qty button{
+ padding:5px 9px;
+}
+
+.total{
+ font-size:26px;
+ font-weight:bold;
+ margin:18px 0;
+}
+
+.order{
+ background:white;
+ border-radius:13px;
+ padding:15px;
+ margin:10px 0;
+ border-left:5px solid #111;
+}
+
+.grid{
+ display:grid;
+ grid-template-columns:
+ repeat(auto-fit,minmax(220px,1fr));
+ gap:12px;
+}
+
+.product{
+ background:white;
+ padding:15px;
+ border-radius:13px;
+}
+
+.printer{
+ background:white;
+ padding:14px;
+ border-radius:12px;
+ margin:8px 0;
+ display:flex;
+ gap:10px;
+ align-items:center;
+ flex-wrap:wrap;
+}
+
+input,select,textarea{
+ padding:10px;
+ border:1px solid #ccc;
+ border-radius:8px;
+ font-size:15px;
+}
+
+input[type="text"],
+input[type="number"],
+select{
+ min-width:180px;
+}
+
+.modal{
+ position:fixed;
+ inset:0;
+ background:#0008;
+ display:none;
+ align-items:center;
+ justify-content:center;
+ padding:15px;
+ z-index:50;
+}
+
+.modal.show{
+ display:flex;
+}
+
+.modal-box{
+ background:#fff;
+ max-width:550px;
+ width:100%;
+ max-height:90vh;
+ overflow:auto;
+ padding:20px;
+ border-radius:16px;
+}
+
+.qr-result{
+ background:#f1f1f1;
+ padding:15px;
+ border-radius:10px;
+ word-break:break-word;
+}
+
+.notice{
+ background:#fff3cd;
+ padding:13px;
+ border-radius:10px;
+ margin-bottom:12px;
+}
+
+.status{
+ display:inline-block;
+ padding:6px 9px;
+ background:#eee;
+ border-radius:7px;
+}
+
+@media(max-width:700px){
+ .scanner{
+  flex-direction:column;
+ }
+ .header{
+  flex-direction:column;
+  align-items:flex-start;
+  gap:7px;
+ }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="header">
+<div>
+<h1 style="margin:0">🧾 Касса</h1>
+<div>Restaurant System</div>
+</div>
+
+<div>
+Касса:
+<select id="cashRegister">
+<option>№1</option>
+<option>№2</option>
+<option>№3</option>
+<option>№4</option>
+<option>№5</option>
+</select>
+</div>
+</div>
+</header>
+
+
+<nav>
+
+<button onclick="showPage('cash')">
+🧾 Касса
+</button>
+
+<button onclick="showPage('orders')">
+📋 Заказы
+</button>
+
+<button onclick="showPage('preorders')">
+🔔 Предзаказы
+</button>
+
+<button onclick="showPage('products')">
+🍔 Товары
+</button>
+
+<button onclick="showPage('printers')">
+🖨️ Принтеры
+</button>
+
+<button onclick="showPage('settings')">
+⚙️ Настройки
+</button>
+
+</nav>
+
+
+<main>
+
+
+<!-- =================================================
+     КАССА
+================================================= -->
+
+<section id="page-cash" class="page active">
+
+<div class="box">
+
+<h2>🛒 Новая продажа</h2>
+
+<div class="scanner">
+
+<input
+ id="barcode"
+ autofocus
+ placeholder="Сканируйте штрихкод товара..."
+>
+
+<button onclick="scanBarcode()">
+📷 Добавить
+</button>
+
+<button onclick="openQR()">
+🔳 QR клиента
+</button>
+
+</div>
+
+<div id="cart">
+Корзина пуста
+</div>
+
+<div class="total">
+Итого:
+<span id="total">0</span> ₸
+</div>
+
+<button onclick="payCurrent()">
+💰 Оплатить
+</button>
+
+<button onclick="printCurrentReceipt()">
+🧾 Печать чека
+</button>
+
+<button onclick="printLabels()">
+🏷️ Этикетки
+</button>
+
+<button class="light" onclick="clearCart()">
+Очистить
+</button>
+
+</div>
+
+</section>
+
+
+<!-- =================================================
+     ЗАКАЗЫ
+================================================= -->
+
+<section id="page-orders" class="page">
+
+<div class="box">
+
+<h2>📋 Заказы</h2>
+
+<button onclick="renderOrders()">
+🔄 Обновить
+</button>
+
+<div id="orders"></div>
+
+</div>
+
+</section>
+
+
+<!-- =================================================
+     ПРЕДЗАКАЗЫ
+================================================= -->
+
+<section id="page-preorders" class="page">
+
+<div class="box">
+
+<h2>🔔 Предзаказы</h2>
+
+<div id="preorders"></div>
+
+</div>
+
+</section>
+
+
+<!-- =================================================
+     ТОВАРЫ
+================================================= -->
+
+<section id="page-products" class="page">
+
+<div class="box">
+
+<h2>🍔 Товары</h2>
+
+<button onclick="addDemoProduct()">
++ Добавить товар
+</button>
+
+<div class="grid" id="products"></div>
+
+</div>
+
+</section>
+
+
+<!-- =================================================
+     ПРИНТЕРЫ
+================================================= -->
+
+<section id="page-printers" class="page">
+
+<div class="box">
+
+<h2>🖨️ Принтеры</h2>
+
+<div class="notice">
+Здесь можно назначить, за что отвечает каждый
+физический принтер.
+</div>
+
+<div id="printers"></div>
+
+<button onclick="addPrinter()">
++ Добавить принтер
+</button>
+
+</div>
+
+</section>
+
+
+<!-- =================================================
+     НАСТРОЙКИ
+================================================= -->
+
+<section id="page-settings" class="page">
+
+<div class="box">
+
+<h2>⚙️ Настройки</h2>
+
+<h3>🏧 Кассы</h3>
+
+<label>
+Количество касс
+<br>
+<input
+ type="number"
+ id="cashCount"
+ min="1"
+ max="50"
+ value="3"
+ onchange="saveSettings()"
+>
+</label>
+
+<h3>🏷️ Этикетки</h3>
+
+<p>
+Максимальный размер:
+<strong>6 × 4 см</strong>
+</p>
+
+<label>
+<input
+ type="checkbox"
+ id="autoLabels"
+ onchange="saveSettings()"
+>
+ Автоматически печатать этикетки
+</label>
+
+<h3>🔔 Уведомления</h3>
+
+<label>
+<input
+ type="checkbox"
+ id="soundNotifications"
+ checked
+ onchange="saveSettings()"
+>
+ Звуковое уведомление о новом заказе
+</label>
+
+</div>
+
+</section>
+
+</main>
+
+
+<!-- =================================================
+     QR
+================================================= -->
+
+<div id="qrModal" class="modal">
+
+<div class="modal-box">
+
+<h2>🔳 Сканирование QR клиента</h2>
+
+<p>
+Сканер QR может передать токен в поле ниже.
+</p>
+
+<input
+ id="qrInput"
+ style="width:100%"
+ placeholder="QR-токен заказа"
+>
+
+<br><br>
+
+<button onclick="findQR()">
+🔎 Найти заказ
+</button>
+
+<button class="light" onclick="closeQR()">
+Закрыть
+</button>
+
+<div id="qrResult"></div>
+
+</div>
+
+</div>
+
+
+<script>
+
+/* =====================================================
+   ТОВАРЫ
+===================================================== */
+
+let PRODUCTS=[
+ {
+  id:"burger",
+  name:"Бургер",
+  price:1500,
+  barcode:"460000000001",
+  stock:50,
+  label:true
+ },
+ {
+  id:"cheese",
+  name:"Чизбургер",
+  price:1800,
+  barcode:"460000000002",
+  stock:50,
+  label:true
+ },
+ {
+  id:"pizza",
+  name:"Пицца",
+  price:2200,
+  barcode:"460000000003",
+  stock:30,
+  label:true
+ },
+ {
+  id:"potato",
+  name:"Картофель фри",
+  price:700,
+  barcode:"460000000004",
+  stock:100,
+  label:true
+ },
+ {
+  id:"cola",
+  name:"Кола",
+  price:500,
+  barcode:"460000000005",
+  stock:100,
+  label:false
+ }
+];
+
+let cart=[];
+
+
+/* =====================================================
+   СТРАНИЦЫ
+===================================================== */
+
+function showPage(page){
+
+ document
+ .querySelectorAll(".page")
+ .forEach(x=>x.classList.remove("active"));
+
+ document
+ .getElementById("page-"+page)
+ .classList.add("active");
+
+ if(page==="orders")
+ renderOrders();
+
+ if(page==="preorders")
+ renderPreorders();
+
+ if(page==="products")
+ renderProducts();
+
+ if(page==="printers")
+ renderPrinters();
+}
+
+
+/* =====================================================
+   СКАНЕР ТОВАРОВ
+===================================================== */
+
+document
+.getElementById("barcode")
+.addEventListener("keydown",function(e){
+
+ if(e.key==="Enter")
+ scanBarcode();
+
+});
+
+
+function scanBarcode(){
+
+ const input=
+ document.getElementById("barcode");
+
+ const code=input.value.trim();
+
+ if(!code)return;
+
+ const product=
+ PRODUCTS.find(p=>p.barcode===code);
+
+ if(!product){
+
+  alert(
+   "Товар со штрихкодом "+
+   code+
+   " не найден."
+  );
+
+  input.value="";
+  input.focus();
+  return;
+ }
+
+ const item=
+ cart.find(x=>x.id===product.id);
+
+ if(item)
+ item.qty++;
+ else
+ cart.push({
+  ...product,
+  qty:1
+ });
+
+ input.value="";
+ input.focus();
+
+ renderCart();
+}
+
+
+/* =====================================================
+   КОРЗИНА
+===================================================== */
+
+function renderCart(){
+
+ if(!cart.length){
+
+  document.getElementById("cart")
+  .innerHTML=
+  "<p>Корзина пуста</p>";
+
+ }else{
+
+  document.getElementById("cart")
+  .innerHTML=
+  cart.map(x=>`
+
+   <div class="cart-row">
+
+    <div>
+     <strong>${x.name}</strong><br>
+     ${x.price*x.qty} ₸
+    </div>
+
+    <div class="qty">
+
+     <button onclick="changeQty('${x.id}',-1)">
+      −
+     </button>
+
+     ${x.qty}
+
+     <button onclick="changeQty('${x.id}',1)">
+      +
+     </button>
+
+    </div>
+
+   </div>
+
+  `).join("");
+ }
+
+ document.getElementById("total")
+ .textContent=
+ cart.reduce(
+  (s,x)=>s+x.price*x.qty,
+  0
+ );
+}
+
+
+function changeQty(id,d){
+
+ const item=
+ cart.find(x=>x.id===id);
+
+ if(!item)return;
+
+ item.qty+=d;
+
+ if(item.qty<=0){
+
+  cart=
+  cart.filter(x=>x.id!==id);
+ }
+
+ renderCart();
+}
+
+
+function clearCart(){
+
+ cart=[];
+
+ renderCart();
+}
+
+
+/* =====================================================
+   СОЗДАНИЕ КАССОВОГО ЗАКАЗА
+===================================================== */
+
+function payCurrent(){
+
+ if(!cart.length){
+
+  alert("Корзина пуста");
+  return;
+ }
+
+ const order={
+  id:
+   "CASH-"+Date.now(),
+
+  source:
+   "Касса "+document
+   .getElementById("cashRegister")
+   .value,
+
+  customer:{
+   name:"Клиент кассы",
+   phone:""
+  },
+
+  items:
+   cart.map(x=>({
+    id:x.id,
+    name:x.name,
+    barcode:x.barcode,
+    price:x.price,
+    quantity:x.qty,
+    printLabel:x.label
+   })),
+
+  total:
+   cart.reduce(
+    (s,x)=>s+x.price*x.qty,
+    0
+   ),
+
+  pickup:"На кассе",
+
+  status:"Готов",
+
+  paymentStatus:"Оплачено",
+
+  paymentMethod:"Оплата в точке",
+
+  createdAt:
+   new Date().toISOString(),
+
+  qrToken:
+   crypto.randomUUID()
+ };
+
+ const orders=
+ getOrders();
+
+ orders.push(order);
+
+ saveOrders(orders);
+
+ alert(
+  "Оплата принята.\n"+
+  "Заказ "+order.id
+ );
+
+ cart=[];
+
+ renderCart();
+
+}
+
+
+/* =====================================================
+   ЗАКАЗЫ
+===================================================== */
+
+function getOrders(){
+
+ return JSON.parse(
+  localStorage.getItem(
+   "restaurantOrders"
+  )||"[]"
+ );
+}
+
+
+function saveOrders(orders){
+
+ localStorage.setItem(
+  "restaurantOrders",
+  JSON.stringify(orders)
+ );
+}
+
+
+function renderOrders(){
+
+ const element=
+ document.getElementById("orders");
+
+ const orders=
+ getOrders().reverse();
+
+ if(!orders.length){
+
+  element.innerHTML=
+  "<p>Заказов нет.</p>";
+
+  return;
+ }
+
+ element.innerHTML=
+ orders.map(order=>`
+
+  <div class="order">
+
+   <h3>${order.id}</h3>
+
+   <p>
+    <strong>Источник:</strong>
+    ${order.source||"Клиент"}
+   </p>
+
+   <p>
+    <strong>Получение:</strong>
+    ${order.pickup||"-"}
+    ${order.floor?
+     " — "+order.floor+" этаж":""
+    }
+   </p>
+
+   <p>
+    ${order.items
+     .map(x=>
+      x.name+
+      " × "+
+      x.quantity
+     ).join(", ")
+    }
+   </p>
+
+   <p>
+    💰 ${order.total} ₸
+   </p>
+
+   <p>
+    💳 ${order.paymentStatus}
+   </p>
+
+   <p>
+    📌
+    <span class="status">
+     ${order.status}
+    </span>
+   </p>
+
+   <button
+    onclick="markPaid('${order.id}')"
+   >
+    💰 Оплачено
+   </button>
+
+   <button
+    onclick="markReady('${order.id}')"
+   >
+    ✅ Готов
+   </button>
+
+   <button
+    onclick="markIssued('${order.id}')"
+   >
+    📦 Выдан
+   </button>
+
+  </div>
+
+ `).join("");
+}
+
+
+function markPaid(id){
+
+ updateOrder(
+  id,
+  {
+   paymentStatus:"Оплачено"
+  }
+ );
+
+ renderOrders();
+}
+
+
+function markReady(id){
+
+ updateOrder(
+  id,
+  {
+   status:"Готов"
+  }
+ );
+
+ renderOrders();
+}
+
+
+function markIssued(id){
+
+ updateOrder(
+  id,
+  {
+   status:"Выдан"
+  }
+ );
+
+ renderOrders();
+}
+
+
+function updateOrder(id,changes){
+
+ const orders=
+ getOrders();
+
+ const order=
+ orders.find(x=>x.id===id);
+
+ if(!order)return;
+
+ Object.assign(
+  order,
+  changes
+ );
+
+ saveOrders(orders);
+}
+
+
+/* =====================================================
+   QR КЛИЕНТА
+===================================================== */
+
+function openQR(){
+
+ document
+ .getElementById("qrModal")
+ .classList.add("show");
+
+ document
+ .getElementById("qrInput")
+ .focus();
+}
+
+
+function closeQR(){
+
+ document
+ .getElementById("qrModal")
+ .classList.remove("show");
+}
+
+
+function findQR(){
+
+ const token=
+ document
+ .getElementById("qrInput")
+ .value.trim();
+
+ const order=
+ getOrders()
+ .find(
+  x=>x.qrToken===token
+ );
+
+ const result=
+ document.getElementById("qrResult");
+
+ if(!order){
+
+  result.innerHTML=
+  "<p>❌ Заказ не найден.</p>";
+
+  return;
+ }
+
+ result.innerHTML=`
+
+  <div class="qr-result">
+
+   <h3>${order.id}</h3>
+
+   <p>
+    👤
+    ${order.customer?.name||"Клиент"}
+   </p>
+
+   <p>
+    📱
+    ${order.customer?.phone||"-"}
+   </p>
+
+   <p>
+    📍
+    ${order.pickup}
+    ${order.floor?
+     " — "+order.floor+" этаж":""
+    }
+   </p>
+
+   <p>
+    💰
+    ${order.total} ₸
+   </p>
+
+   <p>
+    💳
+    ${order.paymentStatus}
+   </p>
+
+   <p>
+    📌
+    ${order.status}
+   </p>
+
+   <h4>Товары</h4>
+
+   ${
+    order.items.map(x=>
+     `<div>
+      ${x.name} × ${x.quantity}
+     </div>`
+    ).join("")
+   }
+
+   <br>
+
+   <button onclick="
+    updateOrder(
+     '${order.id}',
+     {
+      paymentStatus:'Оплачено'
+     }
+    );
+    findQR();
+   ">
+    💰 Оплатить
+   </button>
+
+   <button onclick="
+    updateOrder(
+     '${order.id}',
+     {
+      status:'Выдан'
+     }
+    );
+    findQR();
+   ">
+    📦 Выдать
+   </button>
+
+   <button onclick="
+    printReceipt('${order.id}')
+   ">
+    🧾 Чек
+   </button>
+
+   <button onclick="
+    printLabelsForOrder('${order.id}')
+   ">
+    🏷️ Этикетки
+   </button>
+
+  </div>
+ `;
+}
+
+
+/* =====================================================
+   ПРЕДЗАКАЗЫ
+===================================================== */
+
+function renderPreorders(){
+
+ const element=
+ document.getElementById(
+  "preorders"
+ );
+
+ const orders=
+ getOrders()
+ .filter(
+  x=>x.type==="Предзаказ"
+ );
+
+ if(!orders.length){
+
+  element.innerHTML=
+  "<p>Предзаказов нет.</p>";
+
+  return;
+ }
+
+ element.innerHTML=
+ orders.map(order=>`
+
+ <div class="order">
+
+  <h3>
+   🔔 ${order.id}
+  </h3>
+
+  <p>
+   Время:
+   ${order.preorderTime||"-"}
+  </p>
+
+  <p>
+   Получение:
+   ${order.pickup}
+  </p>
+
+  <p>
+   ${order.total} ₸
+  </p>
+
+  <button
+   onclick="
+    openOrder('${order.id}')
+   "
+  >
+   Открыть
+  </button>
+
+ </div>
+
+ `).join("");
+}
+
+
+function openOrder(id){
+
+ const order=
+ getOrders()
+ .find(x=>x.id===id);
+
+ if(!order)return;
+
+ alert(
+  JSON.stringify(
+   order,
+   null,
+   2
+  )
+ );
+}
+
+
+/* =====================================================
+   ТОВАРЫ
+===================================================== */
+
+function renderProducts(){
+
+ document.getElementById(
+  "products"
+ ).innerHTML=
+ PRODUCTS.map(p=>`
+
+ <div class="product">
+
+  <h3>${p.name}</h3>
+
+  <p>
+   Цена:
+   <strong>${p.price} ₸</strong>
+  </p>
+
+  <p>
+   Штрихкод:
+   ${p.barcode}
+  </p>
+
+  <p>
+   Остаток:
+   ${p.stock}
+  </p>
+
+  <p>
+   Этикетка:
+   ${p.label?"Да":"Нет"}
+  </p>
+
+ </div>
+
+ `).join("");
+}
+
+
+function addDemoProduct(){
+
+ const name=
+ prompt("Название товара");
+
+ if(!name)return;
+
+ const price=
+ Number(
+  prompt("Цена")
+ );
+
+ const barcode=
+ prompt("Штрихкод");
+
+ PRODUCTS.push({
+  id:"p-"+Date.now(),
+  name,
+  price,
+  barcode,
+  stock:0,
+  label:false
+ });
+
+ renderProducts();
+
+}
+
+
+/* =====================================================
+   ПРИНТЕРЫ
+===================================================== */
+
+function getPrinters(){
+
+ return JSON.parse(
+  localStorage.getItem(
+   "restaurantPrinters"
+  )||"[]"
+ );
+}
+
+
+function savePrinters(data){
+
+ localStorage.setItem(
+  "restaurantPrinters",
+  JSON.stringify(data)
+ );
+}
+
+
+function renderPrinters(){
+
+ const printers=
+ getPrinters();
+
+ document.getElementById(
+  "printers"
+ ).innerHTML=
+ printers.map((p,i)=>`
+
+ <div class="printer">
+
+  <input
+   value="${p.name}"
+   onchange="
+    editPrinter(
+     ${i},
+     this.value
+    )
+   "
+  >
+
+  <select
+   onchange="
+    setPrinterPurpose(
+     ${i},
+     this.value
+    )
+   "
+  >
+
+   <option
+    ${p.purpose==="Чек"?"selected":""}
+   >
+    Чек
+   </option>
+
+   <option
+    ${p.purpose==="Кухня"?"selected":""}
+   >
+    Кухня
+   </option>
+
+   <option
+    ${p.purpose==="Сборка"?"selected":""}
+   >
+    Сборка
+   </option>
+
+   <option
+    ${p.purpose==="Этикетки"?"selected":""}
+   >
+    Этикетки
+   </option>
+
+   <option
+    ${p.purpose==="Не назначен"?"selected":""}
+   >
+    Не назначен
+   </option>
+
+  </select>
+
+ </div>
+
+ `).join("");
+
+}
+
+
+function addPrinter(){
+
+ const printers=
+ getPrinters();
+
+ printers.push({
+  id:crypto.randomUUID(),
+  name:"Новый принтер",
+  purpose:"Не назначен"
+ });
+
+ savePrinters(printers);
+
+ renderPrinters();
+}
+
+
+function editPrinter(i,name){
+
+ const printers=
+ getPrinters();
+
+ printers[i].name=name;
+
+ savePrinters(printers);
+}
+
+
+function setPrinterPurpose(i,purpose){
+
+ const printers=
+ getPrinters();
+
+ printers[i].purpose=purpose;
+
+ savePrinters(printers);
+}
+
+
+/* =====================================================
+   ПЕЧАТЬ ЧЕКА
+===================================================== */
+
+function printCurrentReceipt(){
+
+ if(!cart.length){
+
+  alert("Корзина пуста");
+  return;
+ }
+
+ alert(
+  "Чек подготовлен.\n\n"+
+  "На следующем этапе эта кнопка "+
+  "будет отправлять его на выбранный "+
+  "физический принтер."
+ );
+}
+
+
+function printReceipt(id){
+
+ const order=
+ getOrders()
+ .find(x=>x.id===id);
+
+ if(!order)return;
+
+ alert(
+  "Чек заказа "+
+  order.id+
+  " подготовлен к печати."
+ );
+}
+
+
+/* =====================================================
+   ЭТИКЕТКИ
+===================================================== */
+
+function buildLabels(items){
+
+ const labels=[];
+
+ items.forEach(item=>{
+
+  if(!item.printLabel)
+   return;
+
+  for(
+   let i=0;
+   i<item.quantity;
+   i++
+  ){
+
+   labels.push({
+    name:item.name,
+    barcode:item.barcode,
+
+    widthCm:6,
+    heightCm:4,
+
+    logo:true
+   });
+  }
+
+ });
+
+ return labels;
+}
+
+
+function printLabels(){
+
+ if(!cart.length){
+
+  alert("Корзина пуста");
+  return;
+ }
+
+ const labels=
+ buildLabels(
+  cart.map(x=>({
+   ...x,
+   printLabel:x.label
+  }))
+ );
+
+ alert(
+  "Подготовлено этикеток: "+
+  labels.length+
+  "\nРазмер: 6 × 4 см"
+ );
+
+ console.log(
+  "LABELS",
+  labels
+ );
+}
+
+
+function printLabelsForOrder(id){
+
+ const order=
+ getOrders()
+ .find(x=>x.id===id);
+
+ if(!order)return;
+
+ const labels=
+ buildLabels(order.items);
+
+ alert(
+  "Подготовлено этикеток: "+
+  labels.length+
+  "\nРазмер: 6 × 4 см"
+ );
+
+ console.log(
+  "LABELS",
+  labels
+ );
+}
+
+
+/* =====================================================
+   НАСТРОЙКИ
+===================================================== */
+
+function saveSettings(){
+
+ const settings={
+  cashCount:
+   Number(
+    document.getElementById(
+     "cashCount"
+    ).value
+   ),
+
+  autoLabels:
+   document.getElementById(
+    "autoLabels"
+   ).checked,
+
+  sound:
+   document.getElementById(
+    "soundNotifications"
+   ).checked
+ };
+
+ localStorage.setItem(
+  "restaurantSettings",
+  JSON.stringify(settings)
+ );
+}
+
+
+/* =====================================================
+   УВЕДОМЛЕНИЕ О НОВОМ ЗАКАЗЕ
+===================================================== */
+
+let knownOrderCount=
+ getOrders().length;
+
+setInterval(()=>{
+
+ const orders=
+ getOrders();
+
+ if(
+  orders.length>
+  knownOrderCount
+ ){
+
+  knownOrderCount=
+   orders.length;
+
+  showNewOrderNotice();
+ }
+
+},2000);
+
+
+function showNewOrderNotice(){
+
+ const notice=
+ document.createElement("div");
+
+ notice.style.position="fixed";
+ notice.style.right="20px";
+ notice.style.bottom="20px";
+ notice.style.background="#111";
+ notice.style.color="#fff";
+ notice.style.padding="18px";
+ notice.style.borderRadius="12px";
+ notice.style.zIndex="100";
+
+ notice.innerHTML=`
+ <strong>🔔 Новый заказ!</strong>
+ <br>
+ Откройте раздел «Заказы».
+ `;
+
+ document.body.appendChild(notice);
+
+ setTimeout(
+  ()=>notice.remove(),
+  5000
+ );
+
+}
+
+
+/* =====================================================
+   ЗАПУСК
+===================================================== */
+
+renderCart();
+renderOrders();
+renderPreorders();
+renderProducts();
+renderPrinters();
+
+</script>
+
+</body>
+</html>
